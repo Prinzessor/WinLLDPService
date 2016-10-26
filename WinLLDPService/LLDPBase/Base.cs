@@ -62,7 +62,7 @@ namespace WinLLDPService
 
             if (users.Count == 0)
             {
-                Debug.WriteLine("No users found.", EventLogEntryType.Error);
+                Debug.WriteLine("NoUsers", EventLogEntryType.Error);
             }
 
             // Wait to open devices
@@ -71,9 +71,9 @@ namespace WinLLDPService
             // Get information which doesn't change often or doesn't need to be 100% accurate in realtime when iterating through adapters
             PacketInfo pinfo = new PacketInfo();
             pinfo.OperatingSystem = FriendlyName().Trim();
-            pinfo.OperatingSystemVersion = Environment.OSVersion.ToString().Trim();
-            pinfo.Username = String.Join(", ", users).Trim().TrimEnd(',');
-            pinfo.Uptime = GetTickCount64().ToString();
+            pinfo.OperatingSystemVersion = "";
+            pinfo.Username = String.Join(",", users).Trim().TrimEnd(',');
+            pinfo.Uptime = GetUptime();
 
 
             foreach (NetworkInterface adapter in adapters)
@@ -132,38 +132,26 @@ namespace WinLLDPService
         /// So different approach finding correct logged in user(s) have to be used.
         /// </summary>
         /// <returns></returns>
-        private List<string> GetUsers()
+	    public static List<string> GetUsers()
         {
             List<string> users = new List<string>();
 
             // Find all explorer.exe processes
-            foreach (Process p in Process.GetProcessesByName("explorer"))
-            {
-                foreach (ManagementObject mo in new ManagementObjectSearcher(new ObjectQuery(String.Format("SELECT * FROM Win32_Process WHERE ProcessID = '{0}'", p.Id))).Get())
-                {
+            foreach (Process p in Process.GetProcessesByName("explorer")) {
+                foreach (ManagementObject mo in new ManagementObjectSearcher(new ObjectQuery(String.Format("SELECT * FROM Win32_Process WHERE ProcessID = '{0}'", p.Id))).Get()) {
                     string[] s = new string[2];
                     mo.InvokeMethod("GetOwner", (object[])s);
 
                     string user = s[0].ToString();
-                    string domain = s[1].ToString();
+                    //string domain = s[1].ToString();
 
-                    string tmp = user;
-
-                    if (!String.IsNullOrEmpty(domain))
-                    {
-                        tmp += @"\" + domain;
-                    }
-
-                    if (!users.Contains(tmp))
-                    {
-                        users.Add(tmp);
+                    if (!users.Contains(user)) {
+                        users.Add(user);
                     }
                 }
-
             }
 
             return users;
-
         }
 
         /// <summary>
@@ -180,7 +168,7 @@ namespace WinLLDPService
 
             foreach (var s in dict)
             {
-                string tmp = String.Format("{0}:'{1}', ", s.Key, s.Value);
+                string tmp = String.Format("{0}:'{1}',", s.Key, s.Value);
 
                 if ((tmp.Length + o.Length) <= maxlen)
                 {
@@ -256,16 +244,18 @@ namespace WinLLDPService
             // System description
             Dictionary<string, string> systemDescription = new Dictionary<string, string>();
             systemDescription.Add("OS", pinfo.OperatingSystem);
-            systemDescription.Add("Ver", pinfo.OperatingSystemVersion);
-            systemDescription.Add("User", pinfo.Username);
-            systemDescription.Add("Uptime", pinfo.Uptime);
+            //systemDescription.Add("Ver", pinfo.OperatingSystemVersion);
+            systemDescription.Add("Usr", pinfo.Username);
+            systemDescription.Add("Up", pinfo.Uptime);
 
             // Port description
             Dictionary<string, string> portDescription = new Dictionary<string, string>();
 
             // adapter.Description is for example "Intel(R) 82579V Gigabit Network Connection"
             // Registry: HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\NetworkCards\<number>\Description value
-            portDescription.Add("Vendor", adapter.Description);
+            //jt
+            //portDescription.Add("Vendor", adapter.Description);
+            //portDescription.Add("Vendor", "");
 
             /*
              adapter.Id is GUID and can be found in several places: 
@@ -312,7 +302,9 @@ namespace WinLLDPService
             Registry: HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\services\WfpLwf\Parameters\NdisAdapters\{87423023-7191-4C03-A049-B8E7DBB36DA4}
 
             */
-            portDescription.Add("ID", adapter.Id);
+            // jt
+            //portDescription.Add("ID", adapter.Id);
+            //portDescription.Add("ID", "");
 
             // Gateway
             if (ipProperties.GatewayAddresses.Count > 0)
@@ -332,18 +324,19 @@ namespace WinLLDPService
                       w => w.IPv4Mask.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork
                     )
                     .Select(x => getCIDRFromIPMaskAddress(x.IPv4Mask))
+                    .Where( m => m!= 0)
                     .ToArray()
                     ;
 
 
-                portDescription.Add("CIDR", String.Join(", ", mask));
+                portDescription.Add("NM", String.Join(", ", mask));
             }
             else
             {
-                portDescription.Add("CIDR", "-");
+                portDescription.Add("NM", "-");
             }
 
-
+            /*
             // DNS server(s)
             if (ipProperties.DnsAddresses.Count > 0)
             {
@@ -353,6 +346,7 @@ namespace WinLLDPService
             {
                 portDescription.Add("DNS", "-");
             }
+            */
 
             // DHCP server
             if (ipProperties.DhcpServerAddresses.Count > 0)
@@ -364,15 +358,16 @@ namespace WinLLDPService
                 portDescription.Add("DHCP", "-");
             }
 
+            /*
             // WINS server(s)
             if (ipProperties.WinsServersAddresses.Count > 0)
             {
                 portDescription.Add("WINS", String.Join(", ", ipProperties.WinsServersAddresses.Select(i => i.ToString()).ToArray()));
             }
-
+            */
 
             // Link speed
-            portDescription.Add("Speed", ReadableSize(adapter.Speed) + "ps");
+            portDescription.Add("Spd", ReadableSize(adapter.Speed) + "ps");
 
             // Capabilities enabled
             List<CapabilityOptions> capabilitiesEnabled = new List<CapabilityOptions>();
@@ -386,13 +381,16 @@ namespace WinLLDPService
             ushort expectedSystemCapabilitiesCapability = GetCapabilityOptionsBits(GetCapabilityOptions());
             ushort expectedSystemCapabilitiesEnabled = GetCapabilityOptionsBits(capabilitiesEnabled);
 
+            string sysname = "";
+            sysname = String.Format("{0}:{1}", Environment.MachineName, GetServiceTag());
+
             // Constuct LLDP packet 
             LLDPPacket lldpPacket = new LLDPPacket();
             lldpPacket.TlvCollection.Add(new ChassisID(ChassisSubTypes.MACAddress, MACAddress));
             lldpPacket.TlvCollection.Add(new PortID(PortSubTypes.LocallyAssigned, System.Text.Encoding.UTF8.GetBytes(adapter.Name)));
             lldpPacket.TlvCollection.Add(new TimeToLive(120));
             lldpPacket.TlvCollection.Add(new PortDescription(CreateTlvString(portDescription)));
-            lldpPacket.TlvCollection.Add(new SystemName(Environment.MachineName));
+            lldpPacket.TlvCollection.Add(new SystemName( sysname ));
             lldpPacket.TlvCollection.Add(new SystemDescription(CreateTlvString(systemDescription)));
             lldpPacket.TlvCollection.Add(new SystemCapabilities(expectedSystemCapabilitiesCapability, expectedSystemCapabilitiesEnabled));
 
@@ -594,16 +592,56 @@ namespace WinLLDPService
         /// <returns></returns>
         public string FriendlyName()
         {
-            string ProductName = HKLM_GetString(@"SOFTWARE\Microsoft\Windows NT\CurrentVersion", "ProductName");
-            string CSDVersion = HKLM_GetString(@"SOFTWARE\Microsoft\Windows NT\CurrentVersion", "CSDVersion");
-
-            if (!String.IsNullOrEmpty(ProductName))
-            {
-                return (ProductName.StartsWith("Microsoft") ? "" : "Microsoft ") + ProductName + (CSDVersion != "" ? " " + CSDVersion : "");
+            string ProductName = "";
+            ProductName = HKLM_GetString(@"SOFTWARE\Microsoft\Windows NT\CurrentVersion", "ProductName");
+            if(ProductName.Length > 0) {
+            	return ProductName.Replace("Microsoft","").Replace("Windows","Win").Replace("Professional","Pro").Replace("Enterprise","Ent").Replace("Server","Svr").Replace("Standard","Std").Replace("Ultimate","Ult").Replace("Edition","");
             }
-
-            return "?";
+            
+            return "";
         }
 
-    }
-}
+
+        public static string GetServiceTag()
+        {
+        	SelectQuery selectQuery = new SelectQuery("Win32_Bios");
+        	ManagementObjectSearcher searcher = new ManagementObjectSearcher(selectQuery);
+        	string tag = "";
+        	foreach (ManagementObject obj in searcher.Get()) {
+        		tag = obj.Properties["Serialnumber"].Value.ToString().Trim();
+        		if( tag.Length > 3) {
+        			break;
+        		}
+        	}
+
+        	if( tag.ToLower().StartsWith("vmware") ) {
+            	tag = "vmware";
+            }
+
+            tag = Truncate(tag, 16);
+
+        	return tag;
+        }
+
+        public static string GetUptime()
+        {
+        	TimeSpan t1;
+        	t1 = TimeSpan.FromMilliseconds(GetTickCount64());
+        	TimeSpan t2;
+        	t2 = new TimeSpan(t1.Ticks - (t1.Ticks % 600000000));
+        	string uptime = t2.ToString();
+        	if(uptime.EndsWith(":00")) {
+        		uptime = Truncate(uptime,uptime.Length-3);
+        	}
+
+        	return uptime.Trim();
+        }
+
+        public static string Truncate(string value, int maxLength)
+        {
+            if (string.IsNullOrEmpty(value)) return value;
+            return value.Length <= maxLength ? value : value.Substring(0, maxLength);
+        }
+
+    } // class
+} // namespace
