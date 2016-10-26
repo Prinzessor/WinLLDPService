@@ -32,6 +32,10 @@
 - Added FriendlyName(), GetServiceTag(), GetUptime()
 - Added paths.ps1 to build MSI package with WiX Toolkit
 
+# Download
+
+- You can use the *WinLLDPService-installer.msi* package listed above
+
 --------------------------------------------------------------------------
 
 # Original README.md
