@@ -1,5 +1,44 @@
+# My modification notes
+
+- Example output
+```
+   net# sho lldp info remote-device B5
+    
+     LLDP Remote Device Information Detail
+    
+      Local Port   : B5
+      ChassisType  : mac-address
+      ChassisId    : c4 31 2b 7a 0a 11
+      PortType     : mac-address
+      PortId       : c4 31 2b 7a 0a 11
+------------------------------------------------------------------------------
+    Local Port   : B5
+    ChassisType  : mac-address
+    ChassisId    : c4 31 2b 7a 0a 11
+    PortType     : local
+    PortId       : Ethernet
+    SysName      : ComputerNameHere:ServiceTagHere
+    System Descr : OS:'Win 10 Ent',Usr:'jftuga',Up:'27.04:08'
+    PortDescr    : GW:'192.168.25.1',NM:'24',DHCP:'192.168.25.2',Spd:'1Gbps'
+
+     Remote Management Address
+     Type    : ipv4
+     Address : 192.168.25.67
+     
+```
+- Target framework is now v4.5.1 instead of v4.0; do not prefer 32-bit builds
+- Call EmptyWorkingSet() to reduce the memory footprint of the service
+- Improved GetUsers(), CreateLLDPPacket()
+- Added FriendlyName(), GetServiceTag(), GetUptime()
+- Added paths.ps1 to build MSI package with WiX Toolkit
+
+--------------------------------------------------------------------------
+
+# Original README.md
+
+--------------------------------------------------------------------------
+
 # WinLLDPService
-[![Build Status](https://travis-ci.org/raspi/WinLLDPService.svg?branch=master)](https://travis-ci.org/raspi/WinLLDPService)
 
 Small LLDP Windows Service. 
 
