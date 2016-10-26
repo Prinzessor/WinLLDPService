@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Runtime.InteropServices;
 using System.Diagnostics;
 using System.ServiceProcess;
 using System.Timers;
@@ -8,6 +9,8 @@ namespace WinLLDPService
     public class WinLLDPService : ServiceBase
     {
         public const string MyServiceName = "WinLLDPService";
+        [DllImport("psapi.dll")]
+        public static extern bool EmptyWorkingSet(IntPtr hProcess);
 
         Timer timer;
         WinLLDP run;
@@ -40,6 +43,8 @@ namespace WinLLDPService
                 EventLog.CreateEventSource(EventLog.Source, this.EventLog.Log);
             }
 
+            ReduceMemory();
+
             // Run the LLDP packet sender every 30 seconds
             timer = new Timer(TimeSpan.FromSeconds(30).TotalMilliseconds);
             //timer = new Timer(30 * 1000);
@@ -57,11 +62,24 @@ namespace WinLLDPService
             {
                 // Run the LLDP packet sender  
                 run.Run();
+                ReduceMemory();
             }
             catch (Exception ex)
             {
                 // Log run error(s) to Windows Event Log
                 EventLog.WriteEntry("Packet sent failed: " + ex.ToString(), EventLogEntryType.Error);
+            }
+        }
+
+        private void ReduceMemory()
+        {
+            // get handle to a process
+            Process pProcess = Process.GetCurrentProcess();
+            // empty as much as possible of its working set
+            bool bRes = EmptyWorkingSet(pProcess.Handle);
+            if (!bRes)
+            {
+                // EmptyWorkingSet failed...
             }
         }
 
