@@ -198,6 +198,20 @@ namespace WinLLDPService
             return String.Format("{0:G4}{1}", size, units[unit]);
         }
 
+        public static string GetFQDN()
+        {
+            string domainName = IPGlobalProperties.GetIPGlobalProperties().DomainName;
+            string hostName = Dns.GetHostName();
+
+            domainName = "." + domainName;
+            if (!hostName.EndsWith(domainName))  // if hostname does not already include domain name
+            {
+                hostName += domainName;   // add the domain name part
+            }
+
+            return hostName;                    // return the fully qualified name
+        }
+
         /// <summary>
         /// Generate LLDP packet for adapter
         /// </summary>
@@ -245,7 +259,7 @@ namespace WinLLDPService
             Dictionary<string, string> systemDescription = new Dictionary<string, string>();
             systemDescription.Add("OS", pinfo.OperatingSystem);
             //systemDescription.Add("Ver", pinfo.OperatingSystemVersion);
-            systemDescription.Add("Usr", pinfo.Username);
+            //systemDescription.Add("Usr", pinfo.Username);
             systemDescription.Add("Up", pinfo.Uptime);
 
             // Port description
@@ -381,16 +395,13 @@ namespace WinLLDPService
             ushort expectedSystemCapabilitiesCapability = GetCapabilityOptionsBits(GetCapabilityOptions());
             ushort expectedSystemCapabilitiesEnabled = GetCapabilityOptionsBits(capabilitiesEnabled);
 
-            string sysname = "";
-            sysname = String.Format("{0}:{1}", Environment.MachineName, GetServiceTag());
-
             // Constuct LLDP packet 
             LLDPPacket lldpPacket = new LLDPPacket();
             lldpPacket.TlvCollection.Add(new ChassisID(ChassisSubTypes.MACAddress, MACAddress));
             lldpPacket.TlvCollection.Add(new PortID(PortSubTypes.LocallyAssigned, System.Text.Encoding.UTF8.GetBytes(adapter.Name)));
             lldpPacket.TlvCollection.Add(new TimeToLive(120));
             lldpPacket.TlvCollection.Add(new PortDescription(CreateTlvString(portDescription)));
-            lldpPacket.TlvCollection.Add(new SystemName( sysname ));
+            lldpPacket.TlvCollection.Add(new SystemName(GetFQDN()));
             lldpPacket.TlvCollection.Add(new SystemDescription(CreateTlvString(systemDescription)));
             lldpPacket.TlvCollection.Add(new SystemCapabilities(expectedSystemCapabilitiesCapability, expectedSystemCapabilitiesEnabled));
 

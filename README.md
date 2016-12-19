@@ -1,6 +1,7 @@
 # My modification notes
 
 - Forked from: https://github.com/raspi/WinLLDPService
+- Forked from: https://github.com/jftuga/WinLLDPService
 
 - Example output
 ```
@@ -19,8 +20,8 @@
     ChassisId    : c4 31 2b 7a 0a 11
     PortType     : local
     PortId       : Ethernet
-    SysName      : ComputerNameHere:ServiceTagHere
-    System Descr : OS:'Win 10 Ent',Usr:'jftuga',Up:'27.04:08'
+    SysName      : FQDN
+    System Descr : OS:'Win 10 Ent',Up:'27.04:08'
     PortDescr    : GW:'192.168.25.1',NM:'24',DHCP:'192.168.25.2',Spd:'1Gbps'
 
      Remote Management Address
@@ -28,15 +29,14 @@
      Address : 192.168.25.67
      
 ```
-- Target framework is now v4.5.1 instead of v4.0; do not prefer 32-bit builds
-- Call EmptyWorkingSet() to reduce the memory footprint of the service
-- Improved GetUsers(), CreateLLDPPacket()
-- Added FriendlyName(), GetServiceTag(), GetUptime()
-- Added paths.ps1 to build MSI package with WiX Toolkit
+- Removed Usr from Description
+- Changed SysName from NETBIOS Hostname to FQDN
+
 
 # Download
 
-- You can use the *WinLLDPService-installer.msi* package listed above
+- You can use the *WinLLDPService-installer.msi* package listed above in WinLLDPService/build/
+
 
 --------------------------------------------------------------------------
 
