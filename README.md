@@ -35,7 +35,7 @@
 
 # Download
 
-- You can use the *WinLLDPService-installer.msi* package listed above in WinLLDPService/build/
+- You can use the *WinLLDPService-installer.msi* package listed above
 
 
 --------------------------------------------------------------------------
